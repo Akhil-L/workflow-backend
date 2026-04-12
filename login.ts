@@ -1,19 +1,8 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { users } from "./users";
 
 const router = Router();
-
-// TEMP USERS (no DB for now)
-const users: any[] = [
-  {
-    id: 1,
-    name: "Test User",
-    email: "test@gmail.com",
-    password_hash: bcrypt.hashSync("123456", 10),
-    role: "worker",
-    created_at: new Date(),
-  },
-];
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
