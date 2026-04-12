@@ -7,5 +7,7 @@
     "esModuleInterop": true,
     "strict": false,
     "skipLibCheck": true
-  }
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
 }
