@@ -1,17 +1,11 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 
-const router: IRouter = Router();
+const router = Router();
 
 router.post("/logout", (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      req.log.error({ err }, "Failed to destroy session");
-      res.status(500).json({ error: "Failed to log out" });
-      return;
-    }
-
+  req.session.destroy(() => {
     res.clearCookie("connect.sid");
-    res.status(200).json({ message: "Logged out successfully" });
+    res.json({ message: "Logged out successfully" });
   });
 });
 
