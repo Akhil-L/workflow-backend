@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import loginRouter from "./login";
@@ -6,7 +6,7 @@ import meRouter from "./me";
 import logoutRouter from "./logout";
 import tasksRouter from "./tasks";
 
-const router: IRouter = Router();
+const router = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
