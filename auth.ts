@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 const router = Router();
 
 // TEMP USERS (shared in-memory)
-const users: any[] = [];
+import { users } from "./users";
 
 router.post("/register", async (req, res) => {
   const { name, email, password, role } = req.body;
