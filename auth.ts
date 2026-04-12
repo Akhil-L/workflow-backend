@@ -1,10 +1,8 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
+import { users } from "./users";
 
 const router = Router();
-
-// TEMP USERS (shared in-memory)
-import { users } from "./users";
 
 router.post("/register", async (req, res) => {
   const { name, email, password, role } = req.body;
