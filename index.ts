@@ -1,18 +1,7 @@
-import { Router } from "express";
-import healthRouter from "./health";
-import authRouter from "./auth";
-import loginRouter from "./login";
-import meRouter from "./me";
-import logoutRouter from "./logout";
-import tasksRouter from "./tasks";
+import app from "./app";
 
-const router = Router();
+const port = process.env.PORT || 3000;
 
-router.use(healthRouter);
-router.use(authRouter);
-router.use(loginRouter);
-router.use(meRouter);
-router.use(logoutRouter);
-router.use(tasksRouter);
-
-export default router;
+app.listen(port, "0.0.0.0", () => {
+  console.log(`Server running on port ${port}`);
+});
