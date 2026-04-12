@@ -1,47 +1,45 @@
-import { Router, type IRouter } from "express";
+import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { db, usersTable } from "@workspace/db";
-import { RegisterUserBody } from "@workspace/api-zod";
-import { eq } from "drizzle-orm";
 
-const router: IRouter = Router();
+const router = Router();
+
+// TEMP USERS (shared in-memory)
+const users: any[] = [];
 
 router.post("/register", async (req, res) => {
-  const parsed = RegisterUserBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
-    return;
+  const { name, email, password, role } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: "All fields are required" });
   }
 
-  const { name, email, password, role } = parsed.data;
+  const existingUser = users.find((u) => u.email === email);
 
-  const existing = await db
-    .select({ id: usersTable.id })
-    .from(usersTable)
-    .where(eq(usersTable.email, email))
-    .limit(1);
-
-  if (existing.length > 0) {
-    res.status(409).json({ error: "Email already exists" });
-    return;
+  if (existingUser) {
+    return res.status(409).json({ error: "Email already exists" });
   }
 
-  const password_hash = await bcrypt.hash(password, 12);
+  const password_hash = await bcrypt.hash(password, 10);
 
-  const [user] = await db
-    .insert(usersTable)
-    .values({ name, email, password_hash, role })
-    .returning({
-      id: usersTable.id,
-      name: usersTable.name,
-      email: usersTable.email,
-      role: usersTable.role,
-      created_at: usersTable.created_at,
-    });
+  const newUser = {
+    id: users.length + 1,
+    name,
+    email,
+    password_hash,
+    role: role || "worker",
+    created_at: new Date(),
+  };
+
+  users.push(newUser);
 
   res.status(201).json({
     message: "User created successfully",
-    user,
+    user: {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+    },
   });
 });
 
