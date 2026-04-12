@@ -1,168 +1,68 @@
-import { Router, type IRouter } from "express";
-import { db, tasksTable, usersTable } from "@workspace/db";
-import { CreateTaskBody, SubmitTaskBody, ReviewTaskBody } from "@workspace/api-zod";
-import { eq, sql } from "drizzle-orm";
-import { getSessionUser } from "../lib/session";
-import { requireAuth, requireAdmin, requireWorker } from "../middlewares/requireAuth";
+import { Router } from "express";
 
-const router: IRouter = Router();
+const router = Router();
 
-// POST /tasks — create task (admin only)
-router.post("/tasks", requireAdmin, async (req, res) => {
-  const parsed = CreateTaskBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
-    return;
-  }
+// TEMP TASK STORAGE
+let tasks: any[] = [];
 
-  const { title, description, amount } = parsed.data;
+// CREATE TASK
+router.post("/tasks", (req, res) => {
+  const { title, description, amount } = req.body;
 
-  const [task] = await db
-    .insert(tasksTable)
-    .values({ title, description, amount: String(amount) })
-    .returning();
+  const newTask = {
+    id: tasks.length + 1,
+    title,
+    description,
+    amount,
+    status: "open",
+  };
 
-  res.status(201).json({ task });
+  tasks.push(newTask);
+
+  res.status(201).json({ task: newTask });
 });
 
-// GET /tasks — list open tasks (authenticated)
-router.get("/tasks", requireAuth, async (_req, res) => {
-  const tasks = await db
-    .select()
-    .from(tasksTable)
-    .where(eq(tasksTable.status, "open"));
-
-  res.status(200).json({ tasks });
+// GET TASKS
+router.get("/tasks", (req, res) => {
+  res.json({ tasks });
 });
 
-// POST /tasks/:id/accept — worker accepts an open task
-router.post("/tasks/:id/accept", requireWorker, async (req, res) => {
-  const session = getSessionUser(req)!;
-  const taskId = Number(req.params.id);
+// ACCEPT TASK
+router.post("/tasks/:id/accept", (req, res) => {
+  const id = Number(req.params.id);
+  const task = tasks.find(t => t.id === id);
 
-  if (isNaN(taskId)) {
-    res.status(400).json({ error: "Invalid task id" });
-    return;
-  }
+  if (!task) return res.status(404).json({ error: "Task not found" });
 
-  const [task] = await db
-    .select()
-    .from(tasksTable)
-    .where(eq(tasksTable.id, taskId))
-    .limit(1);
+  task.status = "assigned";
 
-  if (!task) {
-    res.status(404).json({ error: "Task not found" });
-    return;
-  }
-
-  if (task.status !== "open") {
-    res.status(409).json({ error: "Task is already assigned or closed" });
-    return;
-  }
-
-  const [updated] = await db
-    .update(tasksTable)
-    .set({ status: "assigned", assigned_to: session.userId })
-    .where(eq(tasksTable.id, taskId))
-    .returning();
-
-  res.status(200).json({ task: updated });
+  res.json({ task });
 });
 
-// POST /tasks/:id/submit — assigned worker submits the task
-router.post("/tasks/:id/submit", requireAuth, async (req, res) => {
-  const session = getSessionUser(req)!;
-  const taskId = Number(req.params.id);
+// SUBMIT TASK
+router.post("/tasks/:id/submit", (req, res) => {
+  const id = Number(req.params.id);
+  const task = tasks.find(t => t.id === id);
 
-  if (isNaN(taskId)) {
-    res.status(400).json({ error: "Invalid task id" });
-    return;
-  }
+  if (!task) return res.status(404).json({ error: "Task not found" });
 
-  const parsed = SubmitTaskBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
-    return;
-  }
+  task.status = "submitted";
 
-  const [task] = await db
-    .select()
-    .from(tasksTable)
-    .where(eq(tasksTable.id, taskId))
-    .limit(1);
-
-  if (!task) {
-    res.status(404).json({ error: "Task not found" });
-    return;
-  }
-
-  if (task.status !== "assigned") {
-    res.status(409).json({ error: "Task is not in assigned state" });
-    return;
-  }
-
-  if (task.assigned_to !== session.userId) {
-    res.status(403).json({ error: "Only the assigned worker can submit this task" });
-    return;
-  }
-
-  const [updated] = await db
-    .update(tasksTable)
-    .set({ status: "submitted", submission_url: parsed.data.submission_url })
-    .where(eq(tasksTable.id, taskId))
-    .returning();
-
-  res.status(200).json({ task: updated });
+  res.json({ task });
 });
 
-// POST /tasks/:id/review — admin approves or rejects a submitted task
-router.post("/tasks/:id/review", requireAdmin, async (req, res) => {
-  const taskId = Number(req.params.id);
+// REVIEW TASK
+router.post("/tasks/:id/review", (req, res) => {
+  const id = Number(req.params.id);
+  const { action } = req.body;
 
-  if (isNaN(taskId)) {
-    res.status(400).json({ error: "Invalid task id" });
-    return;
-  }
+  const task = tasks.find(t => t.id === id);
 
-  const parsed = ReviewTaskBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" });
-    return;
-  }
+  if (!task) return res.status(404).json({ error: "Task not found" });
 
-  const [task] = await db
-    .select()
-    .from(tasksTable)
-    .where(eq(tasksTable.id, taskId))
-    .limit(1);
+  task.status = action === "approve" ? "approved" : "rejected";
 
-  if (!task) {
-    res.status(404).json({ error: "Task not found" });
-    return;
-  }
-
-  if (task.status !== "submitted") {
-    res.status(409).json({ error: "Task is not in submitted state" });
-    return;
-  }
-
-  const newStatus = parsed.data.action === "approve" ? "approved" : "rejected";
-
-  const [updated] = await db
-    .update(tasksTable)
-    .set({ status: newStatus })
-    .where(eq(tasksTable.id, taskId))
-    .returning();
-
-  if (parsed.data.action === "approve" && task.assigned_to !== null) {
-    await db
-      .update(usersTable)
-      .set({ balance: sql`${usersTable.balance} + ${task.amount}` })
-      .where(eq(usersTable.id, task.assigned_to));
-  }
-
-  res.status(200).json({ task: updated });
+  res.json({ task });
 });
 
 export default router;
