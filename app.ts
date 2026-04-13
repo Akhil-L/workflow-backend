@@ -5,6 +5,9 @@ import router from "./routes";
 
 const app: Express = express();
 
+// 🔥 VERY IMPORTANT (FIX FOR RENDER)
+app.set("trust proxy", 1);
+
 // ✅ CORS FIX
 app.use(
   cors({
@@ -24,8 +27,8 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,          // 🔥 IMPORTANT (must be true in production)
-      sameSite: "none",      // 🔥 IMPORTANT (for cross-origin)
+      secure: true,
+      sameSite: "none",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     },
   })
