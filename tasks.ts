@@ -2,8 +2,23 @@ import { Router } from "express";
 
 const router = Router();
 
-// TEMP TASK STORAGE
-let tasks: any[] = [];
+// ✅ DEFAULT TASKS (IMPORTANT FIX)
+let tasks: any[] = [
+  {
+    id: 1,
+    title: "Data Entry Task",
+    description: "Fill customer details",
+    amount: 10,
+    status: "open",
+  },
+  {
+    id: 2,
+    title: "Image Tagging",
+    description: "Tag images correctly",
+    amount: 15,
+    status: "open",
+  }
+];
 
 // CREATE TASK
 router.post("/tasks", (req, res) => {
